@@ -1,0 +1,8 @@
+.worktrees/
+node_modules/
+dist/
+outputs/
+test-results/
+apps/web/test-results/playwright/
+.build/
+.DS_Store

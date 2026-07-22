@@ -1,0 +1,36 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiProvider } from "../../api/ApiProvider.js";
+import type { ApiClient } from "../../api/client.js";
+import { useWorkspace } from "../../state/workspace-store.js";
+import { ProjectToolbar } from "./ProjectToolbar.js";
+
+beforeEach(() => {
+  useWorkspace.getState().reset();
+  useWorkspace.setState({
+    project: { id: "p1", name: "sample", root: "/work/sample" },
+  });
+});
+afterEach(cleanup);
+
+describe("ProjectToolbar", () => {
+  it("checks indexing automatically after a project opens", async () => {
+    const indexStatus = vi.fn().mockResolvedValue({
+      phase: "ready",
+      completed: 5,
+      total: 5,
+      diagnostics: [],
+    });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ApiProvider client={{ indexStatus } as unknown as ApiClient}>
+          <ProjectToolbar />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(indexStatus).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("索引就绪")).toBeTruthy();
+  });
+});

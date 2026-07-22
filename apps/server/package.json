@@ -1,0 +1,21 @@
+{
+  "name": "@cr/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cr/contracts": "0.1.0",
+    "@lezer/common": "^1.5.2",
+    "@lezer/python": "^1.1.19",
+    "chokidar": "^5.0.0",
+    "express": "^5.2.1",
+    "pyright": "^1.1.411",
+    "vscode-jsonrpc": "^9.0.1",
+    "zod": "^4.4.3"
+  }
+}

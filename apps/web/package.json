@@ -1,0 +1,21 @@
+{
+  "name": "@cr/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@cr/contracts": "0.1.0",
+    "@monaco-editor/react": "^4.7.0",
+    "@tanstack/react-query": "^5.101.4",
+    "monaco-editor": "^0.56.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zustand": "^5.0.14"
+  }
+}
