@@ -139,7 +139,8 @@
 }
 
 .workspace-grid {
-  grid-template-columns: minmax(280px, 20vw) minmax(560px, 1fr) minmax(320px, 24vw);
+  grid-template-columns: minmax(280px, 20vw) minmax(560px, 1fr)
+    min(50vw, var(--information-panel-width, 420px));
   gap: 1px;
   background: var(--border);
 }

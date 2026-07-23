@@ -7,15 +7,21 @@ import {
   visitHistory,
   type NavigationHistoryState,
 } from "../features/files/navigation-history.js";
+import {
+  readInformationPanelWidth,
+  writeInformationPanelWidth,
+} from "../components/layout/information-panel-width.js";
 
 type WorkspaceState = {
   project: ProjectSummary | null;
   rightPanelOpen: boolean;
+  rightPanelWidth: number;
   tabs: string[];
   activeLocation: SourceLocation | null;
   history: NavigationHistoryState;
   setProject: (project: ProjectSummary) => void;
   toggleRightPanel: () => void;
+  setRightPanelWidth: (width: number) => void;
   visitLocation: (location: SourceLocation) => void;
   back: () => void;
   forward: () => void;
@@ -26,6 +32,7 @@ type WorkspaceState = {
 const initialState = {
   project: null,
   rightPanelOpen: true,
+  rightPanelWidth: readInformationPanelWidth(),
   tabs: [] as string[],
   activeLocation: null as SourceLocation | null,
   history: { entries: [], cursor: -1 } as NavigationHistoryState,
@@ -36,6 +43,10 @@ export const useWorkspace = create<WorkspaceState>((set) => ({
   setProject: (project) => set({ project }),
   toggleRightPanel: () =>
     set((state) => ({ rightPanelOpen: !state.rightPanelOpen })),
+  setRightPanelWidth: (width) => {
+    writeInformationPanelWidth(width);
+    set({ rightPanelWidth: width });
+  },
   visitLocation: (location) =>
     set((state) => ({
       activeLocation: location,

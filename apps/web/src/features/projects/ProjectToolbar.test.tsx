@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiProvider } from "../../api/ApiProvider.js";
 import type { ApiClient } from "../../api/client.js";
 import { useWorkspace } from "../../state/workspace-store.js";
+import { ControllerPanel } from "../controllers/ControllerPanel.js";
 import { ProjectToolbar } from "./ProjectToolbar.js";
 
 beforeEach(() => {
@@ -77,5 +78,58 @@ describe("ProjectToolbar", () => {
 
     await waitFor(() => expect(indexStatus).toHaveBeenCalledTimes(1));
     expect(screen.getByText("索引就绪")).toBeTruthy();
+  });
+
+  it("refreshes cached controllers once when indexing becomes ready", async () => {
+    const indexStatus = vi
+      .fn()
+      .mockResolvedValueOnce({
+        phase: "scanning",
+        completed: 1,
+        total: 5,
+        diagnostics: [],
+      })
+      .mockResolvedValue({
+        phase: "ready",
+        completed: 5,
+        total: 5,
+        diagnostics: [],
+      });
+    const getControllers = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([
+        {
+          id: "nest-get-user",
+          framework: "nestjs",
+          method: "GET",
+          path: "/users/:id",
+          name: "Get user",
+          parameters: [],
+          response: { type: "UserDto", statusCode: 200 },
+          location: { path: "nest/src/users.controller.ts", line: 10, column: 3 },
+          diagnostics: [],
+        },
+      ]);
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <ApiProvider client={{ indexStatus, getControllers } as unknown as ApiClient}>
+          <ProjectToolbar />
+          <ControllerPanel />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("没有发现 Controller 接口")).toBeTruthy();
+    const scanningButton = await screen.findByRole("button", { name: "索引 1/5" });
+    scanningButton.click();
+    expect(await screen.findByText("/users/:id")).toBeTruthy();
+    expect(getControllers).toHaveBeenCalledTimes(2);
+
+    screen.getByRole("button", { name: "索引就绪" }).click();
+    await waitFor(() => expect(indexStatus).toHaveBeenCalledTimes(3));
+    expect(getControllers).toHaveBeenCalledTimes(2);
   });
 });

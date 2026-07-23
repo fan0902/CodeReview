@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "../../api/ApiProvider.js";
 import { useWorkspace } from "../../state/workspace-store.js";
@@ -55,14 +56,21 @@ export function ProjectToolbar() {
 
 function IndexStatus() {
   const api = useApi();
+  const queryClient = useQueryClient();
   const project = useWorkspace((state) => state.project);
   const [label, setLabel] = useState("未索引");
   const timer = useRef<number | null>(null);
+  const refreshedProject = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!project) return;
     try {
       const status = await api.indexStatus();
+      if (status.phase === "scanning") refreshedProject.current = null;
+      if (status.phase === "ready" && refreshedProject.current !== project.id) {
+        refreshedProject.current = project.id;
+        await queryClient.invalidateQueries({ queryKey: ["controllers", project.id] });
+      }
       setLabel(
         status.phase === "scanning"
           ? `索引 ${status.completed}/${status.total}`
@@ -79,7 +87,7 @@ function IndexStatus() {
     } catch {
       setLabel("索引异常");
     }
-  }, [api, project]);
+  }, [api, project, queryClient]);
 
   useEffect(() => {
     if (!project) {
