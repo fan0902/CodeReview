@@ -22,6 +22,11 @@ export function ProjectToolbar() {
     <div className="project-toolbar">
       <strong className="brand">CR</strong>
       <span className="project-name">{project?.name ?? "未打开工程"}</span>
+      {project ? (
+        <code className="project-path" aria-label="工程绝对路径" title={project.root}>
+          {project.root}
+        </code>
+      ) : null}
       <button type="button" onClick={() => void openProject()} disabled={opening}>
         {opening ? "正在打开…" : "打开工程"}
       </button>

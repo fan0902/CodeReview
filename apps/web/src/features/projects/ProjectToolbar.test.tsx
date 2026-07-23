@@ -15,6 +15,26 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ProjectToolbar", () => {
+  it("shows the opened project's absolute path", async () => {
+    const indexStatus = vi.fn().mockResolvedValue({
+      phase: "ready",
+      completed: 5,
+      total: 5,
+      diagnostics: [],
+    });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ApiProvider client={{ indexStatus } as unknown as ApiClient}>
+          <ProjectToolbar />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    const projectPath = screen.getByLabelText("工程绝对路径");
+    expect(projectPath.textContent).toBe("/work/sample");
+    expect(projectPath.getAttribute("title")).toBe("/work/sample");
+  });
+
   it("checks indexing automatically after a project opens", async () => {
     const indexStatus = vi.fn().mockResolvedValue({
       phase: "ready",
