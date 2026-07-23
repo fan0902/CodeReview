@@ -40,7 +40,9 @@ export function CrApplication({
 
 function Workspace() {
   const rightPanelOpen = useWorkspace((state) => state.rightPanelOpen);
+  const rightPanelWidth = useWorkspace((state) => state.rightPanelWidth);
   const toggleRightPanel = useWorkspace((state) => state.toggleRightPanel);
+  const setRightPanelWidth = useWorkspace((state) => state.setRightPanelWidth);
   return (
     <AppShell
       toolbar={<ProjectToolbar />}
@@ -48,7 +50,9 @@ function Workspace() {
       code={<CodeWorkspace empty={<WorkspaceHome />} />}
       information={<InformationPanel />}
       rightPanelOpen={rightPanelOpen}
+      rightPanelWidth={rightPanelWidth}
       onToggleRightPanel={toggleRightPanel}
+      onResizeRightPanel={setRightPanelWidth}
     />
   );
 }

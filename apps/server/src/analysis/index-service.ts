@@ -11,7 +11,7 @@ import { analyzePythonFile } from "./python-analyzer.js";
 import type { AnalysisResult, AnalyzedEnum } from "./types.js";
 import { analyzeTypeScriptFile } from "./typescript-analyzer.js";
 
-const IGNORED = /(^|[/\\])(\.git|node_modules|\.venv|venv|dist|build|coverage|__pycache__)([/\\]|$)/;
+const IGNORED = /(^|[/\\])(\.git|\.worktrees|node_modules|\.venv|venv|dist|build|coverage|__pycache__)([/\\]|$)/;
 
 export class IndexService {
   private generation = 0;
