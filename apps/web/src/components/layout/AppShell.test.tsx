@@ -22,7 +22,7 @@ describe("CR application shell", () => {
 
     await userEvent.setup().click(screen.getByRole("button", { name: "打开工程" }));
 
-    expect(screen.getByText("mixed-project")).toBeTruthy();
+    expect(screen.getByLabelText("当前工程").textContent).toContain("mixed-project");
   });
 
   it("renders file, code, and collapsible information regions", () => {
@@ -56,7 +56,7 @@ describe("CR application shell", () => {
     );
 
     expect(openRecent).toHaveBeenCalledWith("/work/mixed-project");
-    expect(screen.getByText("mixed-project")).toBeTruthy();
+    expect(screen.getByLabelText("当前工程").textContent).toContain("mixed-project");
   });
 });
 

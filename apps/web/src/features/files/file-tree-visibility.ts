@@ -16,3 +16,27 @@ export function visibleFileTree(
         : node,
     );
 }
+
+export function filterFileTree(
+  nodes: FileTreeNode[],
+  query: string,
+): FileTreeNode[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) return nodes;
+
+  return filterNodes(nodes, normalizedQuery);
+}
+
+function filterNodes(nodes: FileTreeNode[], normalizedQuery: string): FileTreeNode[] {
+  return nodes.flatMap((node) => {
+    const matches =
+      node.name.toLocaleLowerCase().includes(normalizedQuery) ||
+      node.path.toLocaleLowerCase().includes(normalizedQuery);
+
+    if (node.type === "file") return matches ? [node] : [];
+    if (matches) return [node];
+
+    const children = filterNodes(node.children ?? [], normalizedQuery);
+    return children.length ? [{ ...node, children }] : [];
+  });
+}

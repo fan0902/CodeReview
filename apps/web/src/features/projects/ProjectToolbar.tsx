@@ -20,14 +20,32 @@ export function ProjectToolbar() {
 
   return (
     <div className="project-toolbar">
-      <strong className="brand">CR</strong>
-      <span className="project-name">{project?.name ?? "未打开工程"}</span>
-      {project ? (
-        <code className="project-path" aria-label="工程绝对路径" title={project.root}>
-          {project.root}
-        </code>
-      ) : null}
-      <button type="button" onClick={() => void openProject()} disabled={opening}>
+      <div className="app-identity">
+        <span className="brand-mark" aria-hidden="true">CR</span>
+        <span className="brand-copy">
+          <strong>CR</strong>
+          <small>本地只读代码阅读</small>
+        </span>
+      </div>
+      <div className="project-location" aria-label="当前工程">
+        <span className="folder-mark" aria-hidden="true">▱</span>
+        <span className="project-location-copy">
+          <span className="project-name">{project?.name ?? "未打开工程"}</span>
+          {project ? (
+            <code className="project-path" aria-label="工程绝对路径" title={project.root}>
+              {project.root}
+            </code>
+          ) : (
+            <span className="project-path-empty">选择本地 Python 或 TypeScript 工程</span>
+          )}
+        </span>
+      </div>
+      <button
+        className="primary-action"
+        type="button"
+        onClick={() => void openProject()}
+        disabled={opening}
+      >
         {opening ? "正在打开…" : "打开工程"}
       </button>
       <IndexStatus />
@@ -74,8 +92,13 @@ function IndexStatus() {
     };
   }, [project, refresh]);
 
+  const tone = label === "索引就绪" ? "ready" : label === "索引异常" ? "error" : "neutral";
   return (
-    <button className="index-status" type="button" onClick={() => void refresh()}>
+    <button
+      className={`index-status status-${tone}`}
+      type="button"
+      onClick={() => void refresh()}
+    >
       {label}
     </button>
   );

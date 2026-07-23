@@ -20,12 +20,24 @@ for (const viewport of [
   test(`remains readable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openFixture(page);
+    await expect(page.getByText("本地只读代码阅读")).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "过滤文件或目录" })).toBeVisible();
+    await expect(page.getByLabel("当前工程")).toContainText("mixed-project");
     await page.getByRole("treeitem", { name: "users.controller.ts" }).click();
+
+    const sidebarScroll = await page
+      .getByRole("navigation", { name: "工程文件" })
+      .evaluate((element) => element.scrollLeft);
+    expect(sidebarScroll).toBe(0);
 
     const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(documentWidth).toBeLessThanOrEqual(viewport.width);
     const codeBox = await page.getByRole("main", { name: "代码阅读区" }).boundingBox();
     expect(codeBox?.width).toBeGreaterThanOrEqual(560);
+    const headerBox = await page.locator(".project-toolbar").boundingBox();
+    expect(headerBox?.width).toBeLessThanOrEqual(viewport.width - 28);
+    const sidebarBox = await page.getByRole("navigation", { name: "工程文件" }).boundingBox();
+    expect(sidebarBox?.width).toBeGreaterThanOrEqual(240);
     await page.keyboard.press("Tab");
     await expect(page.locator(":focus-visible")).toBeVisible();
     if (viewport.width === 1024) {

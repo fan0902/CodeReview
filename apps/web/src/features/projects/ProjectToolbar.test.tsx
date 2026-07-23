@@ -15,6 +15,31 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ProjectToolbar", () => {
+  it("renders application identity, project location, and the primary open action", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ApiProvider
+          client={{
+            indexStatus: vi.fn().mockResolvedValue({
+              phase: "ready",
+              completed: 5,
+              total: 5,
+              diagnostics: [],
+            }),
+          } as unknown as ApiClient}
+        >
+          <ProjectToolbar />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText("本地只读代码阅读")).toBeTruthy();
+    expect(screen.getByLabelText("当前工程").textContent).toContain("sample");
+    expect(screen.getByRole("button", { name: "打开工程" }).classList).toContain(
+      "primary-action",
+    );
+  });
+
   it("shows the opened project's absolute path", async () => {
     const indexStatus = vi.fn().mockResolvedValue({
       phase: "ready",

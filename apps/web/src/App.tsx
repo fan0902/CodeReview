@@ -10,6 +10,7 @@ import { InformationPanel } from "./features/information/InformationPanel.js";
 import { PageHeartbeat } from "./features/lifecycle/PageHeartbeat.js";
 import { useWorkspace } from "./state/workspace-store.js";
 import "./styles/layout.css";
+import "./styles/branch-review-theme.css";
 
 export function App() {
   const api = useMemo(() => createApiClient(), []);
