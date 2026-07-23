@@ -1,4 +1,5 @@
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { once } from "node:events";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +7,7 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IndexService } from "./analysis/index-service.js";
 import { createApp } from "./app.js";
+import { HeartbeatClock } from "./lifecycle/heartbeat.js";
 import { ProjectService } from "./projects/project-service.js";
 import { SettingsService } from "./settings/settings-service.js";
 
@@ -69,6 +71,58 @@ describe("session security", () => {
 
     expect(heartbeat.beat).toHaveBeenCalledWith("page-1");
     expect(heartbeat.close).toHaveBeenCalledWith("page-1");
+  });
+
+  it("streams page commands and reports whether reopen refreshed a page", async () => {
+    const heartbeat = new HeartbeatClock({
+      idleMs: 60_000,
+      now: Date.now,
+      onIdle: vi.fn(),
+    });
+    const lifecycleApp = createApp({
+      token,
+      allowedOrigin: () => origin,
+      projects: appProjects(),
+      settings: await SettingsService.load(path.join(sandbox, "stream-settings.json")),
+      heartbeat,
+    });
+    const server = lifecycleApp.listen(0);
+    await once(server, "listening");
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Missing test port");
+    const controller = new AbortController();
+
+    try {
+      const events = await fetch(
+        `http://127.0.0.1:${address.port}/api/lifecycle/pages/page-1/events`,
+        {
+          headers: { Authorization: `Bearer ${token}`, Origin: origin },
+          signal: controller.signal,
+        },
+      );
+      expect(events.status).toBe(200);
+      const reader = events.body!.getReader();
+      expect(new TextDecoder().decode((await reader.read()).value)).toContain("connected");
+
+      const reopened = await fetch(
+        `http://127.0.0.1:${address.port}/api/lifecycle/reopen`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, Origin: origin },
+        },
+      );
+      const event = new TextDecoder().decode((await reader.read()).value);
+
+      expect(await reopened.json()).toEqual({ refreshed: true });
+      expect(event).toContain('data: {"type":"reload"}');
+    } finally {
+      controller.abort();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("rejects an unauthenticated page event connection", async () => {
+    await request(app).get("/api/lifecycle/pages/page-1/events").expect(401);
   });
 });
 

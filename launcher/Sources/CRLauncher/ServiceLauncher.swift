@@ -16,12 +16,20 @@ enum LauncherError: LocalizedError {
   }
 }
 
+@MainActor
 final class ServiceLauncher {
   private let resources: URL
   private let support: URL
+  private let pageReuse: PageReuseCoordinator
 
-  init(resources: URL = Bundle.main.resourceURL!) throws {
+  init(
+    resources: URL = Bundle.main.resourceURL!,
+    pageReuse: PageReuseCoordinator? = nil
+  ) throws {
     self.resources = resources
+    self.pageReuse = pageReuse ?? PageReuseCoordinator.system(
+      open: { NSWorkspace.shared.open($0) }
+    )
     if ProcessInfo.processInfo.environment["CR_TEST_MODE"] == "1",
        let testSupport = ProcessInfo.processInfo.environment["CR_APP_SUPPORT_DIR"] {
       support = URL(fileURLWithPath: testSupport, isDirectory: true)
@@ -47,7 +55,7 @@ final class ServiceLauncher {
     let stateURL = support.appendingPathComponent("service.json")
     let validator = ServiceStateValidator.system(expectedExecutable: node)
     if let state = try? loadState(stateURL), validator.isReusable(state), await healthy(state) {
-      guard NSWorkspace.shared.open(state.launchURL) else { throw LauncherError.serviceUnavailable }
+      guard await pageReuse.reuse(state) else { throw LauncherError.serviceUnavailable }
       return
     }
     try? FileManager.default.removeItem(at: stateURL)
@@ -85,7 +93,7 @@ final class ServiceLauncher {
       executable: node.resolvingSymlinksInPath().path
     )
     try saveState(state, to: stateURL)
-    guard await healthy(state), NSWorkspace.shared.open(state.launchURL) else {
+    guard await healthy(state), pageReuse.openNew(state) else {
       process.terminate()
       throw LauncherError.serviceUnavailable
     }

@@ -8,11 +8,16 @@ struct ServiceState: Codable, Equatable {
   let uid: uid_t
   let executable: String
 
+  var origin: String {
+    "http://127.0.0.1:\(port)"
+  }
+
+  var reopenURL: URL {
+    URL(string: "\(origin)/api/lifecycle/reopen")!
+  }
+
   var launchURL: URL {
-    var components = URLComponents()
-    components.scheme = "http"
-    components.host = "127.0.0.1"
-    components.port = Int(port)
+    var components = URLComponents(string: origin)!
     components.path = "/"
     components.queryItems = [URLQueryItem(name: "token", value: token)]
     return components.url!

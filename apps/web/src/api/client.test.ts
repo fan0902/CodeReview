@@ -76,4 +76,67 @@ describe("createApiClient", () => {
       }),
     );
   });
+
+  it("streams authenticated page reload commands", async () => {
+    sessionStorage.setItem("cr.sessionToken", "secret");
+    const encoder = new TextEncoder();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(': connected\n\ndata: {"type":"reload"}\n\n'),
+            );
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const commands: Array<{ type: "reload" }> = [];
+    const signal = new AbortController().signal;
+
+    await createApiClient(window).listenForPageCommands(
+      "page-1",
+      (command) => commands.push(command),
+      signal,
+    );
+
+    expect(commands).toEqual([{ type: "reload" }]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/lifecycle/pages/page-1/events",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer secret" }),
+        signal,
+      }),
+    );
+  });
+
+  it("ignores malformed page command events", async () => {
+    const encoder = new TextEncoder();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode("data: not-json\n\n"));
+              controller.close();
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "text/event-stream" } },
+        ),
+      ),
+    );
+    const onCommand = vi.fn();
+
+    await createApiClient(window).listenForPageCommands(
+      "page-1",
+      onCommand,
+      new AbortController().signal,
+    );
+
+    expect(onCommand).not.toHaveBeenCalled();
+  });
 });

@@ -70,6 +70,30 @@ export function createApp(dependencies: AppDependencies): Express {
   app.use("/api/controllers", controllerRoutes(context));
   app.use("/api/enums", enumRoutes(context));
   app.use("/api/index/status", indexStatusRoutes(context));
+  app.get("/api/lifecycle/pages/:id/events", (request, response) => {
+    const pageId = request.params.id;
+    if (!pageId || pageId.length > 128) {
+      throw new AppError("INVALID_PAGE_ID", "A valid page id is required.", 400);
+    }
+    response.status(200);
+    response.set({
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    });
+    response.flushHeaders();
+    response.write(": connected\n\n");
+    const disconnect =
+      dependencies.heartbeat?.connect(pageId, (command) => {
+        response.write(`data: ${JSON.stringify(command)}\n\n`);
+      }) ?? (() => undefined);
+    response.once("close", disconnect);
+  });
+  app.post("/api/lifecycle/reopen", (_request, response) => {
+    response.json({
+      refreshed: dependencies.heartbeat?.refreshMostRecent() ?? false,
+    });
+  });
   app.post("/api/lifecycle/heartbeat", (request, response) => {
     const pageId = typeof request.body?.pageId === "string" ? request.body.pageId : "";
     if (!pageId || pageId.length > 128) {

@@ -10,8 +10,23 @@ describe("PageHeartbeat", () => {
   it("sends a heartbeat on mount, activity, and closes before unload", async () => {
     const heartbeat = vi.fn().mockResolvedValue(undefined);
     const closePage = vi.fn().mockReturnValue(true);
+    let commandSignal: AbortSignal | undefined;
+    const listenForPageCommands = vi.fn(
+      (_pageId: string, _onCommand: unknown, signal: AbortSignal) => {
+        commandSignal = signal;
+        return new Promise<void>((resolve) => {
+          signal.addEventListener("abort", () => resolve(), { once: true });
+        });
+      },
+    );
     render(
-      <ApiProvider client={{ heartbeat, closePage } as unknown as ApiClient}>
+      <ApiProvider
+        client={{
+          heartbeat,
+          closePage,
+          listenForPageCommands,
+        } as unknown as ApiClient}
+      >
         <PageHeartbeat />
       </ApiProvider>,
     );
@@ -21,5 +36,37 @@ describe("PageHeartbeat", () => {
     await waitFor(() => expect(heartbeat).toHaveBeenCalledTimes(2));
     fireEvent(window, new Event("beforeunload"));
     expect(closePage).toHaveBeenCalledWith(expect.any(String));
+    cleanup();
+    expect(commandSignal?.aborted).toBe(true);
+  });
+
+  it("reloads once when its page receives a reload command", async () => {
+    const reload = vi.fn();
+    const listenForPageCommands = vi.fn(
+      async (
+        _pageId: string,
+        onCommand: (command: { type: "reload" }) => void,
+        signal: AbortSignal,
+      ) => {
+        onCommand({ type: "reload" });
+        await new Promise<void>((resolve) => {
+          signal.addEventListener("abort", () => resolve(), { once: true });
+        });
+      },
+    );
+    const view = render(
+      <ApiProvider
+        client={{
+          heartbeat: vi.fn().mockResolvedValue(undefined),
+          closePage: vi.fn().mockReturnValue(true),
+          listenForPageCommands,
+        } as unknown as ApiClient}
+      >
+        <PageHeartbeat reload={reload} />
+      </ApiProvider>,
+    );
+
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce());
+    view.unmount();
   });
 });

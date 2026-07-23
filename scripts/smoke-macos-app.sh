@@ -6,6 +6,7 @@ support_root="$(mktemp -d "${TMPDIR:-/tmp}/cr-smoke.XXXXXX")"
 state_file="$support_root/service.json"
 launcher_pid=""
 service_pid=""
+events_pid=""
 checkpoint() { printf 'smoke: %s\n' "$1"; }
 cleanup() {
   if [[ ! "$service_pid" =~ ^[0-9]+$ && -f "$state_file" ]]; then
@@ -18,6 +19,9 @@ try { console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")
   fi
   if [[ "$service_pid" =~ ^[0-9]+$ ]] && kill -0 "$service_pid" 2>/dev/null; then
     kill "$service_pid" 2>/dev/null || true
+  fi
+  if [[ "$events_pid" =~ ^[0-9]+$ ]] && kill -0 "$events_pid" 2>/dev/null; then
+    kill "$events_pid" 2>/dev/null || true
   fi
   find "$support_root" -type f -delete 2>/dev/null || true
   rmdir "$support_root" 2>/dev/null || true
@@ -64,9 +68,33 @@ curl --fail --silent -H "Authorization: Bearer $token" -H "Origin: $origin" "$or
 status="$(curl --silent --output /dev/null --write-out '%{http_code}' -H "Authorization: Bearer $token" -H "Origin: $origin" "$origin/api/files/content?path=../settings.json")"
 test "$status" = "403"
 
+events_file="$support_root/page-events.log"
+curl --no-buffer --silent \
+  -H "Authorization: Bearer $token" \
+  -H "Origin: $origin" \
+  "$origin/api/lifecycle/pages/smoke-page/events" >"$events_file" &
+events_pid=$!
+curl --fail --silent \
+  -H "Authorization: Bearer $token" \
+  -H "Origin: $origin" \
+  -H "Content-Type: application/json" \
+  -d '{"pageId":"smoke-page"}' \
+  "$origin/api/lifecycle/heartbeat"
+for _ in {1..50}; do
+  grep -q 'connected' "$events_file" && break
+  sleep 0.1
+done
+grep -q 'connected' "$events_file"
+
 checkpoint "reopen"
 open "$app_path"
-sleep 0.5
+for _ in {1..50}; do
+  grep -q '"type":"reload"' "$events_file" && break
+  sleep 0.1
+done
+grep -q '"type":"reload"' "$events_file"
+reload_count="$(grep -o '"type":"reload"' "$events_file" | wc -l | tr -d ' ')"
+test "$reload_count" = "1"
 second_pid="$("$app_path/Contents/Resources/runtime/node" -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).pid)' "$state_file")"
 test "$second_pid" = "$service_pid"
 

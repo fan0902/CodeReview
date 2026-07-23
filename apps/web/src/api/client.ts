@@ -30,6 +30,7 @@ export type EnumBookmarkInput = Pick<
   EnumBookmark,
   "relativePath" | "symbolName" | "language"
 >;
+export type PageCommand = { type: "reload" };
 
 type BrowserEnvironment = Pick<
   Window,
@@ -76,8 +77,59 @@ export function createApiClient(browser: BrowserEnvironment = window) {
     return (await response.json()) as T;
   }
 
+  async function listenForPageCommands(
+    pageId: string,
+    onCommand: (command: PageCommand) => void,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const response = await fetch(
+      `/api/lifecycle/pages/${encodeURIComponent(pageId)}/events`,
+      { headers: headers(), signal },
+    );
+    if (!response.ok) {
+      throw new ApiError(
+        "PAGE_EVENTS_FAILED",
+        "CR page events are unavailable.",
+        response.status,
+      );
+    }
+    if (!response.body) {
+      throw new ApiError(
+        "PAGE_EVENTS_FAILED",
+        "CR page events are unavailable.",
+        500,
+      );
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? "";
+      for (const frame of frames) {
+        const data = frame
+          .split("\n")
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trimStart())
+          .join("\n");
+        if (!data) continue;
+        try {
+          const parsed = JSON.parse(data) as { type?: unknown };
+          if (parsed.type === "reload") onCommand({ type: "reload" });
+        } catch {
+          // Ignore a malformed frame without dropping the event stream.
+        }
+      }
+      if (done) return;
+    }
+  }
+
   return {
     headers,
+    listenForPageCommands,
     getTree: () => request<FileTreeNode[]>("/api/project/tree"),
     getFile: (path: string) =>
       request<TextFile>(`/api/files/content?${new URLSearchParams({ path })}`),
